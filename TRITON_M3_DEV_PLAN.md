@@ -1,0 +1,118 @@
+# PR2 (M3) triton-ascend 融合开发规划
+
+**日期**: 2026-11-07 · **分支**: `leapquant-triton-m3`(已推 fork,commits `5d6fdf014` + `0b5bad1a5`)
+**上游 PR #21120**(torch M1)评审中;本规划覆盖 RFC #21097 M3 剩余全部工作。
+
+---
+
+## 0. 基线(已完成,2026-11-06/07)
+
+| 项 | 状态 | 证据 |
+|---|---|---|
+| flush 融合核(GDN,双 launch:scales→reconstruct) | ✅ | `ops/triton/leapquant/flush_kernel.py`,UT 5 绿(error-ratio ≤1.01× + 逐元素 ≤1 码步) |
+| `kernel_backend` 配置面(torch 默认/triton 选配)+ 回落 | ✅ | `leapquant_config.kernel_backend`,非 A3 / triton 不可用→自动回落 torch |
+| kernel 级 bench | ✅ | 0.8B 形状 5.9×,9B decode 3.8×,64 due-rows 0.77×(回退 torch) |
+| e2e(0.8B/9B,triton 腿) | ✅ | 9B GSM8K 93.5%(base 93.0),MCQ 200/200 零翻转,flush 417→31s(13.4×);0.8B 噪声带内 |
+| **KDA 几何验证(2026-11-07 新增)** | ✅ | `[slots,H,V,K]`(H=8/4,V=K=128)triton vs torch rel≈1.1e-3 — **Kimi/35B 可直接用 triton backend**,两腿已启动 |
+| torch 腿开销(动机数据) | ✅ | 35B +105%(268→551s),Kimi-48B +9.1%(578→631s),9B flush 417s(已由 triton 解决) |
+
+**已知 triton-ascend 约束**(flush_kernel docstring 已记录,后续 kernel 直接沿用):
+AIV UB 192KB→分块流式;两个同构 `tl.dot` 循环→BiShengIR fusion SIGABRT;axis-0 where 抽取/trans(where) 静默错零(只用 axis-1 `[D,16]` 平面);`list.append` jit 内不可用;static_range R 展开×规约→编译 ~1h(用 runtime 循环+小累加器);int8 cast 用 `overflow_mode="saturate"`(swiglu_quant.py:55 先例)。
+
+---
+
+## 1. 目标与验收(RFC §2.5)
+
+1. **精度**: 与 PR1 相同口径不回退(GSM8K <1pt,MCQ 翻转数对称);
+2. **性能**: 长上下文 decode 吞吐可测提升(flush 开销归零化 + 状态池读取带宽 3.4×);
+3. **显存**: 状态池 fp32→payload ≈3.4× 缩减(9B 单卡 2-3GB→~0.7GB,并发上限提升);
+4. **安全**: 默认关闭;A3-only;任何新 kernel 失败→回落 torch(M1)路径。
+
+---
+
+## 2. 里程碑分解(按依赖排序,每个独立可交付/可 gated)
+
+### M3.0 快赢(今天,~0.5 天)— 纯配置复测,零新代码
+- [x] KDA 几何 UT(已过,rel 1.1e-3)
+- [x] 35B `--backend triton` 腿(2026-11-07):**性能大胜,精度待判** — GSM8K 305.9s(torch 550.9s,base 268.3s)→ flush 开销 +105%→+14%;但 GSM8K 95.0%(base 97.5,torch LQ 96.5)且 MCQ 3 翻转(torch LQ 0)— **open question**,排查中:
+  - [x] 核完整性 UT(64 slots×H=32,子集 flush):non-due 行 bit 级不变,due 行 rel 1.1e-3 → 无 OOB
+  - [x] 串行 B=1 MCQ A/B(f_35b_mcqser_*.json):base vs triton-LQ **0/200 翻转**(逐题一致,均 165/200)→ triton 路径无串扰;**且 B=1 base vs B=16 base = 3/200 翻转** → 原生引擎本身就有 ±3 题的批组成数值敏感(MCQ max_tokens=1 纯 prefill,与 flush 无关)→ 35B triton 腿的 3 翻转 = flush 时速差改变调度批组成的同款良性效应,**非 kernel bug**
+  - [x] 35B triton GSM8K 复跑(f_35b_lq_triton_rerun.json):**95.0% 精确复现**(rerun-vs-first:MCQ 逐题 0 翻转、GSM8K 同 190/200、vs base 同 3 MCQ 翻转)→ 不是跑间噪声;−1.5pp(vs torch 腿 96.5%)归因(核数值差累积 vs 批组成效应)留 B=1 GSM8K A/B 定夺;−2.5pp vs base 超 <1pt 门 → 35B triton 数据表标注「open」
+- [x] Kimi-48B `--backend triton` 腿(f_kimi48b_lq_w16_triton.json):**KDA 路径完美** — GSM8K 181/200=90.5%(与 torch 腿逐分一致,base 182);MCQ 68.0%,7 翻转与 torch 腿**完全同题**(= 量化+批组成的共同抽取,与 backend 无关);GSM8K sample 预测 torch-vs-triton 0/15 差异;墙钟 554.5s(torch 631.0,base 578.3)→ **LQ 腿比 base 还快 4%,flush 开销归零**
+- 产出:PR2 描述的跨模型 triton 数据表;35B 的 +105%→+14% 是最戏剧性的前后对比
+
+**M3.0 数据表(GSM8K acc / 墙钟 / MCQ acc)**:
+
+| 模型 | base | torch flush | triton flush |
+|---|---|---|---|
+| Qwen3.5-0.8B | 40.5% | 45.0%(噪声带),flush 384s | 40.5%(噪声带),flush 23s |
+| Qwen3.5-9B | 93.0% | 92.5%,flush 417s | 93.5%,flush 31s(13.4×) |
+| Qwen3.5-35B-A3B | 97.5%,268s | 96.5%,551s(**+105%**) | 95.0%,306s(**+14%**)精度 open |
+| Kimi-Linear-48B-A3B | 91.0%,578s | 90.5%,631s(+9.1%) | 90.5%,554s(**≈0%**,比 base 还快 4%) |
+
+### M3.1 ✅ 已完成(见 §0 基线)
+
+### M3.2 payload pool(存储层,~4-5 天)— PR2 的显存收益来源
+**文件**: `quantization/methods/mamba_state/leapquant/payload.py`(新)+ `runtime.py` 扩展
+- 布局(§2.1 表,per slot):codes int8 `[Nv,Dv,Dk]`;s_k/s_v fp32 `[Nv,Dk]/[Nv,Dv]`;Q̃v/Ũk fp16 `[Nv,R,Dv/Dk]`;hcnt int32 `[Nv]`;工作区 kbuf/ubuf/w fp16/fp16/fp32 `[Nv,16,·]`(KDA 变体加 gbuf/pcum)
+- 分配路径:注意力类覆写 `get_state_shape()/get_state_dtype()/bind_kv_cache` — 上游 bind 按 shape/dtype 切片 reinterpret,同一 int8 字节池 unpack 成 payload 视图;**不动上游 MambaDType**(plugin 侧完成)
+- 语义分层(关键设计决策):
+  - `mode="roundtrip"`(M3.1 现状): flush 原地 fp32 重建,池仍是 fp32 — 精度基准与回退路径,永久保留;
+  - `mode="payload"`(M3.2 引入): flush 只写 payload 不重建;decode 侧读 payload — 显存与带宽收益来自这里。
+  - 切换由 `kernel_backend=="triton"` + `payload_pool=True`(新 typed 字段)双 gate;两模式共用同一 flush 核(scales 核写 payload,reconstruct 核仅在 roundtrip 模式 launch — 双 launch 结构天然支持)。
+- 状态机:hcnt==window 触发 flush,flush 后停在 16 由 decode 步推进(HF Pool 语义);UT 单测状态机转移
+- 测试门:payload 写读回环 vs torch `leap_window_flush` bit 级一致(codes/scales/补偿因子);池 footprint 前后实测进 PR
+
+### M3.3 chunk_boundary_quantize(prefill 边界,~2-3 天)— 顺手关评审意见
+**文件**: `ops/triton/leapquant/chunk_boundary_quantize.py`(新)
+- 现状:prefill 跨边界的行不 flush(M1 语义,peterDengcx 在 #21120 指出);chunk 后 scatter fp32 state
+- 新:chunk 输出 last_state → 直接编码进 payload(或 roundtrip 模式下原地重建),替代 scatter 后的 torch flush;复用 flush_kernel 的 scales 核,新增入口处理 per-request 边界偏移(query_len 内最后一个窗口边界)
+- `prefill_flush_mask`(state.py:194 已有)提供 due 行计算
+- 测试门:UT 对拍(chunk 边界行 vs 逐步 flush 的等价性);e2e MCQ 零翻转保持
+- 交付后回复 #21120 评审(等用户信号)
+
+### M3.4 recurrent_leapquant(decode 读取侧融合,~5-7 天,最大单块)
+**文件**: `ops/triton/leapquant/recurrent_leapquant.py`(新)
+- 改造 `kda/fused_recurrent_kda.py` 循环骨架(及 GDN `npu_recurrent_gated_delta_rule` 对应骨架):
+  - 每步读 payload(1.19B/elem)+ kbuf/ubuf/w 工作区 → 论文 eq.10 readout,**不物化 fp32 全量态**;
+  - 窗口边界在 kernel 内触发 flush(内联 scales 编码或调 M3.2 核);
+  - 输出 attn out + 更新缓冲/counter。
+- 顺序:先 GDN(Qwen3.5 全系,9B/35B 直接回归)→ 后 KDA(Kimi,gbuf/pcum 门控逐 K 维,论文附录 A;KDA flush 变体核在 M3.2 的 scales 核上加门控参数)
+- 寄存器压力预案(§2 风险):128×128 fp32=64KB 超 UB → readout 分 K 块流式;若 MGS+readout 同核编译炸 → 拆两核边界处两次 launch(丢一次带宽换可编译)
+- 测试门:kernel vs PR1 roundtrip 逐 token 对齐(误差比 ≤1.01×,fp64 重建基准);B=1/B=16/B=64 批形状;e2e 9B 精度 <1pt
+- 基准:decode 吞吐 @ 4K/16K/32K 长上下文(payload 带宽收益主要在这里);TTFT;并发上限提升(池缩小后)
+
+### M3.5 集成硬化 + PR2 组装(~3-4 天)
+- 图捕获兼容:HF "pool 先建 + warmup 再捕获"语义 → NPU 侧 graph 模式验证(hcnt/payload 指针静态化);enforce_eager 路径保持默认
+- 回落矩阵测试:A3/A3I/非 A3 × torch/triton × roundtrip/payload × GDN/KDA 全组合,非法组合拒绝或回落并 log 一次
+- 文档:`docs/` 支持矩阵 + 配置说明;RFC #21097 更新(M2 typed entry 决议 + M3 完成留言)
+- PR2 描述数据表:M3.0 跨模型 + M3.4 吞吐/显存 + UT 汇总
+
+---
+
+## 3. 排期(日历,串行关键路径 = M3.2→M3.4;M3.3 可与 M3.2 并行)
+
+| 周 | 内容 |
+|---|---|
+| W1 | M3.0(当天)+ M3.2 payload pool ∥ M3.3 chunk boundary |
+| W2 | M3.2 收尾(状态机 UT+footprint)→ M3.4 GDN readout 开工 |
+| W3 | M3.4 GDN 完成(kernel UT+e2e 9B)→ KDA 变体 |
+| W4 | M3.4 KDA + M3.5 集成硬化 + PR2 提交 |
+
+与原计划(§2 估 3-4 周)一致;M3.1 已提前完成。
+
+## 4. 风险与预案
+
+| 风险 | 概率 | 预案 |
+|---|---|---|
+| MGS+readout 同核 UB 超限/编译失败 | 高(有先例) | 拆双核;two-pass(先重建残差再拟合);readout 分 K 块 |
+| payload 布局与上游 bind_kv_cache 切片假设冲突 | 中 | plugin 侧 reinterpret 已验证思路;不行则退化为独立池+双池索引映射 |
+| eq.10 readout 数值漂移超门 | 中 | fp64 基准定位;compensator_tokens 自适应升 R(4→8);最坏 mode=payload 仅用于显存受限场景并文档化精度代价 |
+| KDA gbuf/pcum 门控无 HF 参考实现细节 | 中 | 论文附录 A 直接推导;HF `_kda.py` 若已发布则对拍 |
+| 图捕获与 hcnt 动态推进互斥 | 低 | graph 模式暂不 payload(声明限制),eager 默认(现状) |
+| 35B/Kimi triton 腿精度回退 | 低(几何 UT 已过) | 若回退:定位到 KDA 页跨步视图交互,payload 模式推迟到该模型 |
+
+## 5. 立即行动(本规划落地后)
+1. ✅ 35B/Kimi triton 腿(跑中,今天出数)
+2. M3.2 payload.py 骨架:布局常量 + unpack/pack 视图 + roundtrip/payload 双模式 runtime 分支
+3. M3.2 的 scales 核改造:scales 核加 payload 写出(与现有 qk_s/qv_s/uk_s 工作区结构同构 — 它们本来就是 payload 形状,只差持久化),reconstruct 核改 conditional launch

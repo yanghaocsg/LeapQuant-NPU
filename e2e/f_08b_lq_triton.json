@@ -1,0 +1,1075 @@
+{
+ "model": "/workspace/y00924007/mnt-weight/Qwen3.5-0.8B",
+ "leapquant": true,
+ "window": 16,
+ "rank": 4,
+ "gsm8k": {
+  "n": 200,
+  "correct": 81,
+  "acc": 0.405,
+  "seconds": 157.0,
+  "sample_preds": [
+   "$2",
+   "3",
+   "75000",
+   "540",
+   "40",
+   "$1",
+   "140",
+   "2",
+   "600",
+   "460",
+   "366",
+   "694",
+   "4",
+   "4",
+   "60"
+  ],
+  "sample_golds": [
+   "18",
+   "3",
+   "70000",
+   "540",
+   "20",
+   "64",
+   "260",
+   "160",
+   "45",
+   "460",
+   "366",
+   "694",
+   "13",
+   "18",
+   "60"
+  ]
+ },
+ "mcq": {
+  "n": 200,
+  "correct": 73,
+  "acc": 0.365,
+  "detail": [
+   {
+    "subject": "security_study",
+    "gold": "C",
+    "pred": "C"
+   },
+   {
+    "subject": "college_medicine",
+    "gold": "B",
+    "pred": "D"
+   },
+   {
+    "subject": "sports_science",
+    "gold": "C",
+    "pred": "A"
+   },
+   {
+    "subject": "elementary_commonsense",
+    "gold": "A",
+    "pred": "B"
+   },
+   {
+    "subject": "ethnology",
+    "gold": "D",
+    "pred": "B"
+   },
+   {
+    "subject": "global_facts",
+    "gold": "A",
+    "pred": "A"
+   },
+   {
+    "subject": "chinese_food_culture",
+    "gold": "A",
+    "pred": "A"
+   },
+   {
+    "subject": "high_school_mathematics",
+    "gold": "C",
+    "pred": "A"
+   },
+   {
+    "subject": "professional_medicine",
+    "gold": "C",
+    "pred": "A"
+   },
+   {
+    "subject": "elementary_chinese",
+    "gold": "A",
+    "pred": "A"
+   },
+   {
+    "subject": "security_study",
+    "gold": "C",
+    "pred": "C"
+   },
+   {
+    "subject": "security_study",
+    "gold": "D",
+    "pred": "A"
+   },
+   {
+    "subject": "high_school_mathematics",
+    "gold": "B",
+    "pred": "A"
+   },
+   {
+    "subject": "high_school_mathematics",
+    "gold": "D",
+    "pred": "A"
+   },
+   {
+    "subject": "philosophy",
+    "gold": "A",
+    "pred": "A"
+   },
+   {
+    "subject": "management",
+    "gold": "C",
+    "pred": "C"
+   },
+   {
+    "subject": "chinese_civil_service_exam",
+    "gold": "C",
+    "pred": "B"
+   },
+   {
+    "subject": "professional_medicine",
+    "gold": "C",
+    "pred": "B"
+   },
+   {
+    "subject": "marxist_theory",
+    "gold": "C",
+    "pred": "A"
+   },
+   {
+    "subject": "global_facts",
+    "gold": "B",
+    "pred": "B"
+   },
+   {
+    "subject": "sociology",
+    "gold": "A",
+    "pred": "A"
+   },
+   {
+    "subject": "high_school_politics",
+    "gold": "A",
+    "pred": "B"
+   },
+   {
+    "subject": "elementary_mathematics",
+    "gold": "D",
+    "pred": "B"
+   },
+   {
+    "subject": "professional_law",
+    "gold": "A",
+    "pred": "A"
+   },
+   {
+    "subject": "public_relations",
+    "gold": "A",
+    "pred": "A"
+   },
+   {
+    "subject": "marxist_theory",
+    "gold": "C",
+    "pred": "D"
+   },
+   {
+    "subject": "jurisprudence",
+    "gold": "B",
+    "pred": "A"
+   },
+   {
+    "subject": "traditional_chinese_medicine",
+    "gold": "D",
+    "pred": "A"
+   },
+   {
+    "subject": "jurisprudence",
+    "gold": "C",
+    "pred": "A"
+   },
+   {
+    "subject": "jurisprudence",
+    "gold": "D",
+    "pred": "B"
+   },
+   {
+    "subject": "agronomy",
+    "gold": "C",
+    "pred": "A"
+   },
+   {
+    "subject": "computer_security",
+    "gold": "B",
+    "pred": "C"
+   },
+   {
+    "subject": "economics",
+    "gold": "C",
+    "pred": "C"
+   },
+   {
+    "subject": "jurisprudence",
+    "gold": "C",
+    "pred": "B"
+   },
+   {
+    "subject": "world_history",
+    "gold": "B",
+    "pred": "A"
+   },
+   {
+    "subject": "sports_science",
+    "gold": "C",
+    "pred": "B"
+   },
+   {
+    "subject": "electrical_engineering",
+    "gold": "A",
+    "pred": "B"
+   },
+   {
+    "subject": "high_school_biology",
+    "gold": "C",
+    "pred": "A"
+   },
+   {
+    "subject": "machine_learning",
+    "gold": "B",
+    "pred": "C"
+   },
+   {
+    "subject": "ancient_chinese",
+    "gold": "B",
+    "pred": "A"
+   },
+   {
+    "subject": "virology",
+    "gold": "A",
+    "pred": "A"
+   },
+   {
+    "subject": "elementary_information_and_technology",
+    "gold": "D",
+    "pred": "B"
+   },
+   {
+    "subject": "high_school_politics",
+    "gold": "B",
+    "pred": "A"
+   },
+   {
+    "subject": "genetics",
+    "gold": "A",
+    "pred": "A"
+   },
+   {
+    "subject": "global_facts",
+    "gold": "B",
+    "pred": "B"
+   },
+   {
+    "subject": "sociology",
+    "gold": "A",
+    "pred": "C"
+   },
+   {
+    "subject": "genetics",
+    "gold": "D",
+    "pred": "B"
+   },
+   {
+    "subject": "sports_science",
+    "gold": "D",
+    "pred": "A"
+   },
+   {
+    "subject": "elementary_chinese",
+    "gold": "B",
+    "pred": "A"
+   },
+   {
+    "subject": "college_law",
+    "gold": "D",
+    "pred": "C"
+   },
+   {
+    "subject": "college_actuarial_science",
+    "gold": "D",
+    "pred": "B"
+   },
+   {
+    "subject": "marxist_theory",
+    "gold": "D",
+    "pred": "B"
+   },
+   {
+    "subject": "modern_chinese",
+    "gold": "A",
+    "pred": "A"
+   },
+   {
+    "subject": "elementary_chinese",
+    "gold": "D",
+    "pred": "A"
+   },
+   {
+    "subject": "nutrition",
+    "gold": "D",
+    "pred": "B"
+   },
+   {
+    "subject": "elementary_chinese",
+    "gold": "D",
+    "pred": "C"
+   },
+   {
+    "subject": "management",
+    "gold": "A",
+    "pred": "A"
+   },
+   {
+    "subject": "marxist_theory",
+    "gold": "D",
+    "pred": "B"
+   },
+   {
+    "subject": "college_engineering_hydrology",
+    "gold": "B",
+    "pred": "B"
+   },
+   {
+    "subject": "world_history",
+    "gold": "D",
+    "pred": "C"
+   },
+   {
+    "subject": "jurisprudence",
+    "gold": "D",
+    "pred": "A"
+   },
+   {
+    "subject": "food_science",
+    "gold": "D",
+    "pred": "A"
+   },
+   {
+    "subject": "professional_psychology",
+    "gold": "D",
+    "pred": "B"
+   },
+   {
+    "subject": "genetics",
+    "gold": "B",
+    "pred": "B"
+   },
+   {
+    "subject": "traditional_chinese_medicine",
+    "gold": "A",
+    "pred": "B"
+   },
+   {
+    "subject": "machine_learning",
+    "gold": "D",
+    "pred": "A"
+   },
+   {
+    "subject": "college_medicine",
+    "gold": "C",
+    "pred": "C"
+   },
+   {
+    "subject": "college_medicine",
+    "gold": "A",
+    "pred": "A"
+   },
+   {
+    "subject": "high_school_physics",
+    "gold": "B",
+    "pred": "A"
+   },
+   {
+    "subject": "conceptual_physics",
+    "gold": "C",
+    "pred": "A"
+   },
+   {
+    "subject": "logical",
+    "gold": "B",
+    "pred": "B"
+   },
+   {
+    "subject": "virology",
+    "gold": "C",
+    "pred": "B"
+   },
+   {
+    "subject": "sociology",
+    "gold": "B",
+    "pred": "B"
+   },
+   {
+    "subject": "economics",
+    "gold": "C",
+    "pred": "A"
+   },
+   {
+    "subject": "security_study",
+    "gold": "A",
+    "pred": "A"
+   },
+   {
+    "subject": "elementary_chinese",
+    "gold": "A",
+    "pred": "A"
+   },
+   {
+    "subject": "marketing",
+    "gold": "B",
+    "pred": "D"
+   },
+   {
+    "subject": "elementary_mathematics",
+    "gold": "D",
+    "pred": "B"
+   },
+   {
+    "subject": "college_medical_statistics",
+    "gold": "A",
+    "pred": "A"
+   },
+   {
+    "subject": "virology",
+    "gold": "D",
+    "pred": "C"
+   },
+   {
+    "subject": "genetics",
+    "gold": "D",
+    "pred": "C"
+   },
+   {
+    "subject": "human_sexuality",
+    "gold": "D",
+    "pred": "A"
+   },
+   {
+    "subject": "marketing",
+    "gold": "D",
+    "pred": "D"
+   },
+   {
+    "subject": "chinese_history",
+    "gold": "B",
+    "pred": "B"
+   },
+   {
+    "subject": "arts",
+    "gold": "B",
+    "pred": "B"
+   },
+   {
+    "subject": "chinese_civil_service_exam",
+    "gold": "A",
+    "pred": "B"
+   },
+   {
+    "subject": "construction_project_management",
+    "gold": "B",
+    "pred": "B"
+   },
+   {
+    "subject": "college_mathematics",
+    "gold": "D",
+    "pred": "A"
+   },
+   {
+    "subject": "college_mathematics",
+    "gold": "B",
+    "pred": "C"
+   },
+   {
+    "subject": "college_medicine",
+    "gold": "D",
+    "pred": "B"
+   },
+   {
+    "subject": "professional_medicine",
+    "gold": "B",
+    "pred": "C"
+   },
+   {
+    "subject": "business_ethics",
+    "gold": "A",
+    "pred": "B"
+   },
+   {
+    "subject": "elementary_information_and_technology",
+    "gold": "B",
+    "pred": "A"
+   },
+   {
+    "subject": "college_education",
+    "gold": "C",
+    "pred": "C"
+   },
+   {
+    "subject": "professional_accounting",
+    "gold": "B",
+    "pred": "D"
+   },
+   {
+    "subject": "high_school_politics",
+    "gold": "C",
+    "pred": "B"
+   },
+   {
+    "subject": "logical",
+    "gold": "A",
+    "pred": "D"
+   },
+   {
+    "subject": "chinese_literature",
+    "gold": "B",
+    "pred": "A"
+   },
+   {
+    "subject": "management",
+    "gold": "B",
+    "pred": "B"
+   },
+   {
+    "subject": "traditional_chinese_medicine",
+    "gold": "D",
+    "pred": "D"
+   },
+   {
+    "subject": "genetics",
+    "gold": "B",
+    "pred": "C"
+   },
+   {
+    "subject": "jurisprudence",
+    "gold": "D",
+    "pred": "A"
+   },
+   {
+    "subject": "chinese_literature",
+    "gold": "B",
+    "pred": "A"
+   },
+   {
+    "subject": "business_ethics",
+    "gold": "A",
+    "pred": "A"
+   },
+   {
+    "subject": "chinese_history",
+    "gold": "B",
+    "pred": "C"
+   },
+   {
+    "subject": "clinical_knowledge",
+    "gold": "C",
+    "pred": "C"
+   },
+   {
+    "subject": "virology",
+    "gold": "C",
+    "pred": "D"
+   },
+   {
+    "subject": "world_history",
+    "gold": "C",
+    "pred": "C"
+   },
+   {
+    "subject": "professional_medicine",
+    "gold": "A",
+    "pred": "B"
+   },
+   {
+    "subject": "philosophy",
+    "gold": "B",
+    "pred": "B"
+   },
+   {
+    "subject": "chinese_history",
+    "gold": "C",
+    "pred": "D"
+   },
+   {
+    "subject": "high_school_geography",
+    "gold": "B",
+    "pred": "B"
+   },
+   {
+    "subject": "global_facts",
+    "gold": "A",
+    "pred": "B"
+   },
+   {
+    "subject": "public_relations",
+    "gold": "C",
+    "pred": "C"
+   },
+   {
+    "subject": "journalism",
+    "gold": "D",
+    "pred": "A"
+   },
+   {
+    "subject": "ancient_chinese",
+    "gold": "C",
+    "pred": "B"
+   },
+   {
+    "subject": "public_relations",
+    "gold": "B",
+    "pred": "B"
+   },
+   {
+    "subject": "ancient_chinese",
+    "gold": "C",
+    "pred": "A"
+   },
+   {
+    "subject": "high_school_politics",
+    "gold": "D",
+    "pred": "B"
+   },
+   {
+    "subject": "clinical_knowledge",
+    "gold": "B",
+    "pred": "B"
+   },
+   {
+    "subject": "professional_accounting",
+    "gold": "B",
+    "pred": "A"
+   },
+   {
+    "subject": "electrical_engineering",
+    "gold": "C",
+    "pred": "B"
+   },
+   {
+    "subject": "nutrition",
+    "gold": "D",
+    "pred": "A"
+   },
+   {
+    "subject": "professional_law",
+    "gold": "C",
+    "pred": "B"
+   },
+   {
+    "subject": "modern_chinese",
+    "gold": "B",
+    "pred": "C"
+   },
+   {
+    "subject": "chinese_literature",
+    "gold": "A",
+    "pred": "A"
+   },
+   {
+    "subject": "arts",
+    "gold": "A",
+    "pred": "C"
+   },
+   {
+    "subject": "professional_law",
+    "gold": "A",
+    "pred": "B"
+   },
+   {
+    "subject": "professional_medicine",
+    "gold": "B",
+    "pred": "A"
+   },
+   {
+    "subject": "construction_project_management",
+    "gold": "B",
+    "pred": "A"
+   },
+   {
+    "subject": "astronomy",
+    "gold": "D",
+    "pred": "D"
+   },
+   {
+    "subject": "astronomy",
+    "gold": "A",
+    "pred": "B"
+   },
+   {
+    "subject": "marketing",
+    "gold": "D",
+    "pred": "A"
+   },
+   {
+    "subject": "elementary_information_and_technology",
+    "gold": "B",
+    "pred": "B"
+   },
+   {
+    "subject": "conceptual_physics",
+    "gold": "D",
+    "pred": "A"
+   },
+   {
+    "subject": "nutrition",
+    "gold": "C",
+    "pred": "C"
+   },
+   {
+    "subject": "chinese_history",
+    "gold": "D",
+    "pred": "C"
+   },
+   {
+    "subject": "elementary_mathematics",
+    "gold": "C",
+    "pred": "C"
+   },
+   {
+    "subject": "elementary_commonsense",
+    "gold": "B",
+    "pred": "C"
+   },
+   {
+    "subject": "elementary_chinese",
+    "gold": "C",
+    "pred": "C"
+   },
+   {
+    "subject": "world_religions",
+    "gold": "C",
+    "pred": "B"
+   },
+   {
+    "subject": "international_law",
+    "gold": "C",
+    "pred": "A"
+   },
+   {
+    "subject": "legal_and_moral_basis",
+    "gold": "A",
+    "pred": "A"
+   },
+   {
+    "subject": "legal_and_moral_basis",
+    "gold": "B",
+    "pred": "B"
+   },
+   {
+    "subject": "professional_accounting",
+    "gold": "C",
+    "pred": "C"
+   },
+   {
+    "subject": "virology",
+    "gold": "B",
+    "pred": "B"
+   },
+   {
+    "subject": "high_school_biology",
+    "gold": "D",
+    "pred": "B"
+   },
+   {
+    "subject": "professional_medicine",
+    "gold": "A",
+    "pred": "A"
+   },
+   {
+    "subject": "computer_science",
+    "gold": "C",
+    "pred": "A"
+   },
+   {
+    "subject": "professional_accounting",
+    "gold": "B",
+    "pred": "B"
+   },
+   {
+    "subject": "chinese_history",
+    "gold": "B",
+    "pred": "C"
+   },
+   {
+    "subject": "marxist_theory",
+    "gold": "B",
+    "pred": "B"
+   },
+   {
+    "subject": "computer_science",
+    "gold": "D",
+    "pred": "B"
+   },
+   {
+    "subject": "professional_medicine",
+    "gold": "D",
+    "pred": "A"
+   },
+   {
+    "subject": "sociology",
+    "gold": "B",
+    "pred": "B"
+   },
+   {
+    "subject": "jurisprudence",
+    "gold": "A",
+    "pred": "A"
+   },
+   {
+    "subject": "electrical_engineering",
+    "gold": "D",
+    "pred": "C"
+   },
+   {
+    "subject": "world_history",
+    "gold": "A",
+    "pred": "A"
+   },
+   {
+    "subject": "world_history",
+    "gold": "B",
+    "pred": "D"
+   },
+   {
+    "subject": "traditional_chinese_medicine",
+    "gold": "C",
+    "pred": "B"
+   },
+   {
+    "subject": "arts",
+    "gold": "D",
+    "pred": "A"
+   },
+   {
+    "subject": "elementary_commonsense",
+    "gold": "A",
+    "pred": "A"
+   },
+   {
+    "subject": "global_facts",
+    "gold": "C",
+    "pred": "C"
+   },
+   {
+    "subject": "high_school_geography",
+    "gold": "B",
+    "pred": "B"
+   },
+   {
+    "subject": "college_medicine",
+    "gold": "D",
+    "pred": "B"
+   },
+   {
+    "subject": "human_sexuality",
+    "gold": "C",
+    "pred": "A"
+   },
+   {
+    "subject": "food_science",
+    "gold": "D",
+    "pred": "A"
+   },
+   {
+    "subject": "public_relations",
+    "gold": "B",
+    "pred": "B"
+   },
+   {
+    "subject": "food_science",
+    "gold": "A",
+    "pred": "C"
+   },
+   {
+    "subject": "virology",
+    "gold": "D",
+    "pred": "A"
+   },
+   {
+    "subject": "public_relations",
+    "gold": "B",
+    "pred": "B"
+   },
+   {
+    "subject": "chinese_civil_service_exam",
+    "gold": "B",
+    "pred": "C"
+   },
+   {
+    "subject": "food_science",
+    "gold": "A",
+    "pred": "A"
+   },
+   {
+    "subject": "world_religions",
+    "gold": "A",
+    "pred": "B"
+   },
+   {
+    "subject": "food_science",
+    "gold": "B",
+    "pred": "A"
+   },
+   {
+    "subject": "agronomy",
+    "gold": "B",
+    "pred": "A"
+   },
+   {
+    "subject": "marxist_theory",
+    "gold": "B",
+    "pred": "B"
+   },
+   {
+    "subject": "computer_security",
+    "gold": "C",
+    "pred": "B"
+   },
+   {
+    "subject": "business_ethics",
+    "gold": "A",
+    "pred": "B"
+   },
+   {
+    "subject": "arts",
+    "gold": "A",
+    "pred": "A"
+   },
+   {
+    "subject": "chinese_teacher_qualification",
+    "gold": "D",
+    "pred": "D"
+   },
+   {
+    "subject": "chinese_history",
+    "gold": "C",
+    "pred": "C"
+   },
+   {
+    "subject": "logical",
+    "gold": "B",
+    "pred": "A"
+   },
+   {
+    "subject": "elementary_information_and_technology",
+    "gold": "B",
+    "pred": "B"
+   },
+   {
+    "subject": "marxist_theory",
+    "gold": "D",
+    "pred": "A"
+   },
+   {
+    "subject": "legal_and_moral_basis",
+    "gold": "A",
+    "pred": "A"
+   },
+   {
+    "subject": "public_relations",
+    "gold": "A",
+    "pred": "B"
+   },
+   {
+    "subject": "clinical_knowledge",
+    "gold": "C",
+    "pred": "B"
+   },
+   {
+    "subject": "world_history",
+    "gold": "D",
+    "pred": "B"
+   },
+   {
+    "subject": "college_law",
+    "gold": "C",
+    "pred": "B"
+   },
+   {
+    "subject": "agronomy",
+    "gold": "B",
+    "pred": "A"
+   },
+   {
+    "subject": "security_study",
+    "gold": "C",
+    "pred": "A"
+   },
+   {
+    "subject": "college_medical_statistics",
+    "gold": "D",
+    "pred": "A"
+   },
+   {
+    "subject": "business_ethics",
+    "gold": "C",
+    "pred": "D"
+   },
+   {
+    "subject": "high_school_biology",
+    "gold": "B",
+    "pred": "B"
+   },
+   {
+    "subject": "elementary_information_and_technology",
+    "gold": "D",
+    "pred": "D"
+   },
+   {
+    "subject": "jurisprudence",
+    "gold": "A",
+    "pred": "A"
+   },
+   {
+    "subject": "modern_chinese",
+    "gold": "D",
+    "pred": "B"
+   },
+   {
+    "subject": "elementary_commonsense",
+    "gold": "B",
+    "pred": "A"
+   },
+   {
+    "subject": "clinical_knowledge",
+    "gold": "C",
+    "pred": "C"
+   }
+  ]
+ },
+ "drift": {
+  "prompts": [
+   "用一段话解释量子计算与经典计算的本质区别。",
+   "Write a Python function that computes the n-th Fibonacci number with memoization.",
+   "A train travels 120 km in 1.5 hours, then 80 km in 45 minutes. What is its average speed for the whole trip? Show your reasoning.",
+   "Summarize the plot of Romeo and Juliet in exactly three sentences.",
+   "列出五个提高代码可读性的具体实践，并各用一句话说明原因。",
+   "Explain the difference between TCP and UDP to a junior engineer, using an analogy involving mail.",
+   "如果地球自转速度突然加快一倍，日常生活中会出现哪些现象？请列举三条。",
+   "Write a haiku about debugging production incidents at 3am, then explain its meaning."
+  ],
+  "texts": [
+   "量子计算与经典计算在核心原理上存在根本性的差异：经典计算基于概率波函数，遵循叠加态和干涉原理，通过线性叠加和线性叠加的线性组合来模拟物理过程，其计算复杂度主要由指数级函数决定；而量子计算则利用量子叠加态和量子纠缠，通过量子门操作将多个状态同时叠加并干涉，从而在特定条件下以指数级的速度并行处理大量信息，其计算复杂度主要由多项式函数决定。",
+   "```python\ndef fibonacci(n: int) -> int:\n    \"\"\"\n    Compute the n-th Fibonacci number with memoization.\n\n    Fibonacci sequence:\n        F(0) = 0\n        F(1) = 1\n        F(n) = F(n-1) + F(n-2) for n >= 2\n\n    Parameters\n    ----------\n    n : int\n        The index of the Fibonacci number to compute.\n\n    Returns\n    -------\n    int\n        The n-th Fibonacci number.\n    \"\"\"\n    if n < 0:\n        raise ValueError(\"n must be non-negative\")\n    if n == 0:\n        return 0\n    if n == 1:\n        return 1\n\n    memo = {}\n\n    def _fib(n: int) -> int:\n        if n in memo:\n            return memo[n]\n        memo[n] = _fib(n - 1) + _fib(n - 2)\n        return memo[n]\n\n    return _fib(n)\n\n\n# Example usage:\nif __name__ == \"__main__\":\n    print(fibonacci(0))   # 0\n    print(fib",
+   "To find the average speed for the entire trip, we need to calculate the total distance traveled and the total time taken, then divide the total distance by the total time.\n\nHere is the step-by-step reasoning:\n\n### 1. Identify the given data\n*   **Segment 1:** Distance = $120 \\text{ km}$, Time = $1.5 \\text{ hours}$\n*   **Segment 2:** Distance = $80 \\text{ km}$, Time = $45 \\text{ minutes}$\n\n### 2. Convert units to a common standard\nThe most common unit for time in physics and math problems is **hours**.\n*   Segment 1 time: $1.5 \\text{ hours}$ (Already in hours).\n*   Segment 2 time: $45 \\text{ minutes}$. Since $60 \\text{ minutes} = 1 \\text{ hour}$, we convert $45$ minutes to hours:\n    $$45 \\text{ minutes} = \\frac{45}{60} \\text{ hours} = 0.75 \\text{ hours}$$\n\n### 3. Calculate the total distance\nAdd the distances",
+   "Romeo and Juliet are introduced as two young lovers from opposite families who must marry despite their families' hatreds. Their tragic fate is sealed when the families' feud forces them to marry, and the lovers' love is ultimately destroyed by the death of their parents. The story concludes with the tragic end of the two lovers, who die in the same night, leaving their families in despair.",
+   "1. **使用有意义的变量名**：避免使用缩写或无意义的单词，例如将 `count` 改为 `total_items`，能显著提升代码的语义清晰度。\n2. **遵循单一职责原则**：将功能模块拆分为职责单一的小文件，确保每个文件只负责处理一个特定的逻辑，使代码结构更清晰。\n3. **使用文档字符串**：为函数和类添加详细的文档字符串，明确说明其输入参数、返回值及执行逻辑，帮助他人快速理解代码意图。\n4. **采用模块化与分层设计**：将代码拆分为独立的模块，并依据功能划分不同的层级，便于维护和扩展，减少代码间的耦合度。\n5. **添加详细的注释**：在关键逻辑处添加详细的注释，解释变量含义、数据流向和算法步骤，消除代码中的“黑盒”感，降低阅读门槛。",
+   "Imagine you are sending a letter to a friend.\n\n### The Scenario: Sending a Letter\n\n**1. The Mail System (TCP)**\n*   **The Process:** You write the letter down, put it in a box, and send it to a post office. The post office delivers it to your friend's house.\n*   **The \"Connection\":** The post office has a special box called a **mailbox**. It keeps track of who is in the box and who is waiting.\n*   **The \"Connection\" (TCP):** When you send the letter, the post office opens a **connection** to your friend's mailbox. This connection is like a physical link between the post office and the friend's house.\n    *   *Why?* Because the post office needs to know exactly where the letter is and how to deliver it. It needs to know the exact address of the friend's house.\n    *   *What happens if the friend is busy?* The post office waits. If the friend is busy, the post office might have to wait a long time (or even block the post office) to deliver the letter.\n    *   *Result:* The letter arrives reliably, but it might take a long time.\n\n**",
+   "如果地球自转速度突然加快一倍，根据开普勒第三定律（行星公转周期与轨道半径的平方根成正比），地球将经历剧烈的轨道变化。以下是三条可能出现的现象：\n\n1.  **月球轨道加速，导致月球离地球更近**\n    由于地球自转速度加快，地球公转速度也会随之加快。根据开普勒第三定律，公转速度越快，公转周期越短。月球作为地球的卫星，其公转周期与地球公转周期同步。因此，地球自转加快会导致月球公转周期缩短，月球将向地球方向加速靠近，最终可能直接撞向地球。\n\n2.  **大气层被“撕裂”或“剥离”**\n    地球大气层主要由氢和氦组成，这些气体在地球引力作用下会向赤道方向流动。当地球自转速度加快时，大气层会加速向赤道方向运动。由于地球自转速度加快，大气层在赤道处的运动速度会超过当地水平气压梯度力，导致大气层被“撕裂”或“剥离”，形成类似“地球被撕开”的壮观景象。\n\n3.  **昼夜交替时间缩短，甚至出现“午夜太阳”**\n",
+   "Silent alarms at 3am,\nThe code runs cold,\nA broken loop.\n\nMeaning: When systems fail at night, the silence isn't just absence of sound; it's a warning that the foundation of the operation is crumbling, requiring immediate, deep-dive investigation before the next shift begins."
+  ]
+ }
+}
