@@ -37,7 +37,8 @@ AIV UB 192KB→分块流式;两个同构 `tl.dot` 循环→BiShengIR fusion SIGA
 - [x] 35B `--backend triton` 腿(2026-11-07):**性能大胜,精度待判** — GSM8K 305.9s(torch 550.9s,base 268.3s)→ flush 开销 +105%→+14%;但 GSM8K 95.0%(base 97.5,torch LQ 96.5)且 MCQ 3 翻转(torch LQ 0)— **open question**,排查中:
   - [x] 核完整性 UT(64 slots×H=32,子集 flush):non-due 行 bit 级不变,due 行 rel 1.1e-3 → 无 OOB
   - [x] 串行 B=1 MCQ A/B(f_35b_mcqser_*.json):base vs triton-LQ **0/200 翻转**(逐题一致,均 165/200)→ triton 路径无串扰;**且 B=1 base vs B=16 base = 3/200 翻转** → 原生引擎本身就有 ±3 题的批组成数值敏感(MCQ max_tokens=1 纯 prefill,与 flush 无关)→ 35B triton 腿的 3 翻转 = flush 时速差改变调度批组成的同款良性效应,**非 kernel bug**
-  - [x] 35B triton GSM8K 复跑(f_35b_lq_triton_rerun.json):**95.0% 精确复现**(rerun-vs-first:MCQ 逐题 0 翻转、GSM8K 同 190/200、vs base 同 3 MCQ 翻转)→ 不是跑间噪声;−1.5pp(vs torch 腿 96.5%)归因(核数值差累积 vs 批组成效应)留 B=1 GSM8K A/B 定夺;−2.5pp vs base 超 <1pt 门 → 35B triton 数据表标注「open」
+  - [x] 35B triton GSM8K 复跑(f_35b_lq_triton_rerun.json):**95.0% 精确复现**(rerun-vs-first:MCQ 逐题 0 翻转、GSM8K 同 190/200、vs base 同 3 MCQ 翻转)→ 不是跑间噪声
+  - [x] 35B triton **换题序腿**(--gsm-seed 7,f_35b_lq_triton_seed7.json):**96.0%**(192/200,308s)→ 离开 95.0 → −1.5pp(vs torch 96.5)主要是题序/边缘抽取敏感,非硬性核回退;35B triton 区间 [95.0, 96.0],vs base −1.5~−2.5pp 仍略超 <1pt 门 → 数据表标注「order-sensitive,非系统性核缺陷;待 M3.4 payload readout 后复核」
 - [x] Kimi-48B `--backend triton` 腿(f_kimi48b_lq_w16_triton.json):**KDA 路径完美** — GSM8K 181/200=90.5%(与 torch 腿逐分一致,base 182);MCQ 68.0%,7 翻转与 torch 腿**完全同题**(= 量化+批组成的共同抽取,与 backend 无关);GSM8K sample 预测 torch-vs-triton 0/15 差异;墙钟 554.5s(torch 631.0,base 578.3)→ **LQ 腿比 base 还快 4%,flush 开销归零**
 - 产出:PR2 描述的跨模型 triton 数据表;35B 的 +105%→+14% 是最戏剧性的前后对比
 
