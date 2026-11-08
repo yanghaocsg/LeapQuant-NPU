@@ -17,7 +17,7 @@
 | torch 腿开销(动机数据) | ✅ | 35B +105%(268→551s),Kimi-48B +9.1%(578→631s),9B flush 417s(已由 triton 解决) |
 
 **已知 triton-ascend 约束**(flush_kernel docstring 已记录,后续 kernel 直接沿用):
-AIV UB 192KB→分块流式;两个同构 `tl.dot` 循环→BiShengIR fusion SIGABRT;axis-0 where 抽取/trans(where) 静默错零(只用 axis-1 `[D,16]` 平面);`list.append` jit 内不可用;static_range R 展开×规约→编译 ~1h(用 runtime 循环+小累加器);int8 cast 用 `overflow_mode="saturate"`(swiglu_quant.py:55 先例)。
+AIV UB 192KB→分块流式;两个同构 `tl.dot` 循环→BiShengIR fusion SIGABRT;axis-0 where 抽取/trans(where) 静默错零(只用 axis-1 `[D,16]` 平面);`list.append` jit 内不可用;static_range R 展开×规约→编译 ~1h(用 runtime 循环+小累加器);int8 cast 用 `overflow_mode="saturate"`(swiglu_quant.py:55 先例);**寄存器内 `x.to(fp16).to(fp32)` 编译为 no-op(fp16 以 fp32 寄存器仿真)— fp16 舍入只能靠 fp16 显存 store 完成**(M3.2a 发现:scratch 改 fp16 显存 + 独立 raw fp32 平面供 `uk=S^T qv` 用,详见 flush_kernel 模块注释);REWRITE 双写分支(编码+重建两组 store 同核)在 128×128/R=4 超 UB(≈206KB>192KB)→ dual 模式用第三 launch 复用 reconstruct 核(bit 级等价)。
 
 ---
 
@@ -55,6 +55,7 @@ AIV UB 192KB→分块流式;两个同构 `tl.dot` 循环→BiShengIR fusion SIGA
 
 ### M3.2 payload pool(存储层,~4-5 天)— PR2 的显存收益来源
 **文件**: `quantization/methods/mamba_state/leapquant/payload.py`(新)+ `runtime.py` 扩展
+- **M3.2a ✅(2026-11-08,commit c50a99126)**:payload.py(PayloadLayout+Pool,uint8 单缓冲 head-major unpack,19460B/头块=1.1877B/elem=3.37×)+ flush 核 `_leapquant_payload_encode_kernel` + wrapper `payload=/rewrite_state=/hcnt_value=` 三模式(roundtrip/payload/dual);UT 8 绿(纯 payload:状态池 bit 不动+非 due 行 bit 零+对拍门同 roundtrip;dual:与 roundtrip 核 bit 一致)+ 旧 UT 5 绿无回退。**顺带修掉 M3.1 隐患**:fp16 因子舍入此前被编译器折叠为 no-op(scratch 一直存 raw),改 fp16 显存 scratch+raw qvr 平面后与 torch 参考严格一致。
 - 布局(§2.1 表,per slot):codes int8 `[Nv,Dv,Dk]`;s_k/s_v fp32 `[Nv,Dk]/[Nv,Dv]`;Q̃v/Ũk fp16 `[Nv,R,Dv/Dk]`;hcnt int32 `[Nv]`;工作区 kbuf/ubuf/w fp16/fp16/fp32 `[Nv,16,·]`(KDA 变体加 gbuf/pcum)
 - 分配路径:注意力类覆写 `get_state_shape()/get_state_dtype()/bind_kv_cache` — 上游 bind 按 shape/dtype 切片 reinterpret,同一 int8 字节池 unpack 成 payload 视图;**不动上游 MambaDType**(plugin 侧完成)
 - 语义分层(关键设计决策):
