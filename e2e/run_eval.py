@@ -92,6 +92,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--model", required=True)
     ap.add_argument("--leapquant", type=int, default=0)
+    ap.add_argument("--payload-pool", type=int, default=0)
     ap.add_argument("--window", type=int, default=16)
     ap.add_argument("--rank", type=int, default=4)
     ap.add_argument("--out", required=True)
@@ -115,6 +116,7 @@ def main():
                 "window": args.window,
                 "compensator_tokens": args.rank,
                 "kernel_backend": args.backend,
+                "payload_pool": bool(args.payload_pool),
             }
         }
 
@@ -135,6 +137,7 @@ def main():
     result = {
         "model": args.model,
         "leapquant": bool(args.leapquant),
+        "payload_pool": bool(args.payload_pool),
         "window": args.window,
         "rank": args.rank,
     }
