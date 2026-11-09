@@ -76,13 +76,32 @@ AIV UB 192KB→分块流式;两个同构 `tl.dot` 循环→BiShengIR fusion SIGA
 - 状态机:hcnt==window 触发 flush,flush 后停在 16 由 decode 步推进(HF Pool 语义);UT 单测状态机转移
 - 测试门:payload 写读回环 vs torch `leap_window_flush` bit 级一致(codes/scales/补偿因子);池 footprint 前后实测进 PR
 
-### M3.3 chunk_boundary_quantize(prefill 边界,~2-3 天)— 顺手关评审意见
-**文件**: `ops/triton/leapquant/chunk_boundary_quantize.py`(新)
-- 现状:prefill 跨边界的行不 flush(M1 语义,peterDengcx 在 #21120 指出);chunk 后 scatter fp32 state
-- 新:chunk 输出 last_state → 直接编码进 payload(或 roundtrip 模式下原地重建),替代 scatter 后的 torch flush;复用 flush_kernel 的 scales 核,新增入口处理 per-request 边界偏移(query_len 内最后一个窗口边界)
-- `prefill_flush_mask`(state.py:194 已有)提供 due 行计算
-- 测试门:UT 对拍(chunk 边界行 vs 逐步 flush 的等价性);e2e MCQ 零翻转保持
-- 交付后回复 #21120 评审(等用户信号)
+### M3.3 chunk 边界 flush 语义(跨界 due 判定)— 调度级已落地,内核级留 M3.4 顺手
+**2026-11-09 commit `c602bb026`(fork leapquant-triton-m3)**,采取 pragmatic 路线:不改 chunk
+kernel,把 flush 调度从"chunk 末端恰对齐边界"(`seq % w == 0`,M1 语义,peterDengcx 在 #21120
+指出的缺口)升级为**跨界判定**:
+
+- `state.crossed_boundary_mask`:`⌊seq/w⌋ > ⌊(seq−q)/w⌋` — 步区间 `[seq−q, seq]` 跨过任一
+  窗口倍数即 due;decode(q=1)在 `seq ≥ 1` 上精确退化为 `seq % w == 0`(seq=0 空序列本无可
+  flush,同 `decode_flush_mask` 的 `ends > 0` 守卫);
+- chunked delta-rule kernel 只物化 chunk 末端状态 ⇒ 跨 k≥1 个边界的 chunk 在 chunk 末端获得
+  **恰好一次** flush;跨步看没有任何边界被跳过(每个边界在其后第一个步末得到 flush)——评审
+  意见的核心(边界漏 flush)就此关闭,残余差异只是 flush 落点偏后;
+- payload `hcnt` 改存逐行**窗口相位** `seq % window`(边界对齐=0,chunk 末端落窗口中间=其偏移),
+  供 M3.4 readout 知道 checkpoint 折入多少 token:flush_kernel `hcnt_vals_ptr`/wrapper
+  `hcnt_values`(int32/同设备/形状校验),runtime payload 路径为 due 行计算相位;
+- 接线:builder `_attach_leapquant_metadata` 附加 `leapquant_query_lens =
+  diff(query_start_loc_cpu)`(缺省回落 M1 mask);gdn.py/kimi_kda.py 站点传 `query_lens=`;
+  `runtime.leapquant_flush_state_rows(query_lens=None)` 向后兼容(decode-only 调用方/UT)。
+
+测试门:CPU UT 全绿(state 8 / runtime 9 / config 6,含跨界 mask 全案例 + runtime 穿越 flush +
+步进覆盖每个边界恰一次);NPU UT(payload 逐行 hcnt + 校验)与 0.8B payload e2e 腿(M3.3 语义,
+`f_08b_lq_triton_payload_m33.json`,对 `f_08b_lq_triton_payload.json` 的 diff 应落在噪声底)
+经 `e2e/wait_and_run_m33.sh` 排队等卡。
+
+**残余(降级为顺手项)**:真正的 chunk 循环内逐窗口编码 `chunk_boundary_quantize.py` 不再是
+M3.3 必需(现语义已无漏 flush),列为 PR2 polish / M3.4 顺手项——收益仅是把 flush 落点从
+"chunk 末端"提前到"每个内部边界",量化误差路径不变。评审回复继续压后(用户指令:先不关闭)。
 
 ### M3.4 recurrent_leapquant(decode 读取侧融合,~5-7 天,最大单块)
 **文件**: `ops/triton/leapquant/recurrent_leapquant.py`(新)
