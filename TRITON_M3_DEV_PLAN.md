@@ -108,14 +108,27 @@ M3.3 必需(现语义已无漏 flush),列为 PR2 polish / M3.4 顺手项——�
 
 ### M3.4 recurrent_leapquant(decode 读取侧融合,~5-7 天,最大单块)
 **文件**: `ops/triton/leapquant/recurrent_leapquant.py`(新)
-- 改造 `kda/fused_recurrent_kda.py` 循环骨架(及 GDN `npu_recurrent_gated_delta_rule` 对应骨架):
-  - 每步读 payload(1.19B/elem)+ kbuf/ubuf/w 工作区 → 论文 eq.10 readout,**不物化 fp32 全量态**;
-  - 窗口边界在 kernel 内触发 flush(内联 scales 编码或调 M3.2 核);
-  - 输出 attn out + 更新缓冲/counter。
-- 顺序:先 GDN(Qwen3.5 全系,9B/35B 直接回归)→ 后 KDA(Kimi,gbuf/pcum 门控逐 K 维,论文附录 A;KDA flush 变体核在 M3.2 的 scales 核上加门控参数)
+
+**骨架侦察结论(2026-11-10,Explore agent 全文见会话)**:
+1. **两条生产 decode 路径都是 fla_npu AscendC 二进制,改不了** — GDN: `fla_npu.ops.ascendc.recurrent_gated_delta_rule`(gdn.py L954-967 调用,标量 g 衰减、host 侧已做 l2norm+sigmoid beta、`ssm_state_indices` 逐 token 展平 `[T]`+`actual_seq_lengths`、state `[slots,HV,V,K]` 原地突变、Dk=Dv=128 硬限);KDA: `run_recurrent_kda`→AscendC `recurrent_kda`(kimi_kda.py:477-503,gk 逐 K 维衰减)。**我们的 triton `fused_recurrent_kda.py` 只经 patch_triton.py:47-51 猴补丁被 fla 导入方消费** — 自有 KDA 后端根本不用它。→ M3.4 必须**替换 gdn.py/kimi_kda.py 的调用点**为自建核,而非改造。
+2. **递归主循环 5 行数学(三处一致,fla 参考可读 fused_recurrent.py L122-149)**:`b_h *= exp(g 或 gk[k])`(KDA 逐 K 列 / GDN 标量)— `ṽ = v − (S k)_v` — `ṽ *= β` — `S += ṽ kᵀ` — `o = (S q)·scale`;每 program 拥有一个 (seq, v-head) 的 `[BV,BK]` fp32 tile 走完整个 token 环(KDA 核 BV≤8,fla ≤32);`state_idx<=0` NULL 槽跳过;inplace 终态逐 token 写回(spec draft 槽)。
+3. **状态取向 [V,K] 处处一致,与 payload 布局精确对齐**(codes [V,K]、s_v 按 V 行、s_k 按 K 列)→ `S₀ = qᵀu + codes·(s_k/127)·s_v` 可直接重构进 `[BV,BK]` tile,主循环零改动;bit 兼容风险点 = 衰减方向性(标量 vs 逐列)、beta 位置(乘 ṽ 不乘 S/o)、l2norm 位置(GDN 在外/KDA 在核内)、`state_idx<=0` 语义。
+
+**分阶段设计(侦察后修订)**:
+- **M3.4a 持久化切换(容量收益)**:页丢 fp32 ssm 分量(计划既定),活跃请求改用 **W 工作区 `[max_seqs, HV, V, K]` fp32**(≈ B/slots 3.5% 额外,净容量仍 ~3.2×);decode 步读写 W(带宽同今日);边界 flush 已是 M3.2 分裂启动,无需核内融合;新增集成 = W 的请求绑定生命周期(新建/恢复/驱逐-编码)。W 冷启动 = payload reconstruct(核内 PAYLOAD_INIT 路径)或 prefill scatter。
+- **M3.4b eq.10 纯读出(带宽收益)**:W 换 kbuf/ubuf 环形缓冲 `[B,H,window,K+V]`,每步 payload 读出(1.19B/elem,状态带宽 3.37×↓)+ 环内 ≤window token 重放(计算换带宽,decode 访存受限下的正交易)。
+- 顺序不变:先 GDN(标量 g、无 gbuf/pcum,最简)→ 后 KDA(逐 K 列衰减 + gate 核内展开 `−exp(A_log)·softplus(a+dt_bias)`/safe 变体 lower_bound·sigmoid,M3.2 scales 核加门控参数)。
 - 寄存器压力预案(§2 风险):128×128 fp32=64KB 超 UB → readout 分 K 块流式;若 MGS+readout 同核编译炸 → 拆两核边界处两次 launch(丢一次带宽换可编译)
 - 测试门:kernel vs PR1 roundtrip 逐 token 对齐(误差比 ≤1.01×,fp64 重建基准);B=1/B=16/B=64 批形状;e2e 9B 精度 <1pt
-- 基准:decode 吞吐 @ 4K/16K/32K 长上下文(payload 带宽收益主要在这里);TTFT;并发上限提升(池缩小后)
+- 基准:decode 吞吐 @ 4K/16K/32K 长上下文(M3.4b 的带宽收益主要在这里);TTFT;并发上限提升(M3.4a 的容量收益)
+
+**进展(2026-11-10,commits c01a06d13 + 4d12fe81a)**:
+- ✅ **内核落地** `recurrent_leapquant.py`:`_recurrent_gdn_leapquant_kernel` 一次编译通过。每 program 一个 (K-block, V-block, seq×v-head) 的 `[BV,BK]` fp32 tile(BV=min(pow2,8),grid `(NK,NV,B·HV)`,num_warps=1);稳态 `w_in` 路径 + 冷启动 `USE_PAYLOAD_INIT`(eq.8-9 原位重构:codes·(s_k/127)·s_v + R 个 rank 外积,axis-1 提取);NULL 槽/行 sentinel=-1(0 是合法 pool 行!与 ssm_state_indices 对齐)零态跑递归但跳过 W 写;g/beta load 后转 fp32。
+- ✅ **bring-up 三bug修复**:① wrapper 实参顺序与签名错位(pl_args 的 6 个 stride 插在指针后,全部 stride 位移 6 位)→ 按签名「9 指针→全部 stride→scale」重排;② NULL 判定 `slot<=0` → `slot<0`(slot 0 合法,首版把 slot 0 全零化);③ 稳态路径 row<0 无守卫(生产 NULL 请求槽会负偏移越界)。
+- ✅ **UT 6/6** `test_leapquant_recurrent.py`:稳态+payload-init vs fp64 参考(V=K=128 GDN 几何;T=3+GVA HV=2H;payload 路径容差 4e-4 —— fp16 补偿面核内逐 rank 累加 vs torch 融合重构的 fp32 舍入顺序差)、padded W 跨步、NULL 槽(-1)零态、NULL 行稳态、参数校验。回归:flush 5 + payload 17 + gdn_integration 全绿。
+- ✅ **gdn.py 集成(slice 1,数值替换)**:两个非 spec decode 调用点(纯 decode 分支 + split_non_spec decode 段)在 `kernel_backend=="triton" && ssm_state fp32`(默认 `mamba_ssm_cache_dtype=auto`→fp32)时改走 `_leapquant_recurrent_decode` helper;spec 路径留 AscendC(leapquant 拒绝 spec 配置);`leapquant_config` 提升到 2.0 节(原 2.4 重复获取)。`test_leapquant_gdn_integration.py` 3/3:新增 triton vs AscendC 64 步轨迹 <2%(bf16 输入舍入量级)+ triton+flush 包络 5%。
+- ✅ **e2e 腿通过(2026-11-10 晚,卡 0,`f_08b_lq_triton_payload_m34.json`)**:gsm8k **99/200=49.5%**(高于历史带 81-90;+10 题 = 0.8B 刀口效应——核内全 fp32 vs AscendC 内部精度,贪心路径微移;sample 9/15 与 M3.3 相同,恰为跨腿噪声底 9-11/15,同时证明核真实生效:静默回退会是 15/15 全同);**mcq 73/200 与 M3.3 零翻转**(传递性对齐全部历史腿,硬门最严标准通过);墙钟 188.6s vs 185.9s(+1.5%,triton 核替换 AscendC 零代价);drift 2/8 全同(噪声底 2-5/8 内)。
+- 后续:M3.4a W 工作区生命周期(容量收益)→ KDA 侧同款核(逐 K 列衰减)→ M3.4b eq.10 环形读出。
 
 ### M3.5 集成硬化 + PR2 组装(~3-4 天)
 - 图捕获兼容:HF "pool 先建 + warmup 再捕获"语义 → NPU 侧 graph 模式验证(hcnt/payload 指针静态化);enforce_eager 路径保持默认
