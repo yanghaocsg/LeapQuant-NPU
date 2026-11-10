@@ -76,7 +76,7 @@ AIV UB 192KB→分块流式;两个同构 `tl.dot` 循环→BiShengIR fusion SIGA
 - 状态机:hcnt==window 触发 flush,flush 后停在 16 由 decode 步推进(HF Pool 语义);UT 单测状态机转移
 - 测试门:payload 写读回环 vs torch `leap_window_flush` bit 级一致(codes/scales/补偿因子);池 footprint 前后实测进 PR
 
-### M3.3 chunk 边界 flush 语义(跨界 due 判定)— 调度级已落地,内核级留 M3.4 顺手
+### M3.3 chunk 边界 flush 语义(跨界 due 判定)✅ 收口 2026-11-10 — 调度级已落地,内核级留 M3.4 顺手
 **2026-11-09 commit `c602bb026`(fork leapquant-triton-m3)**,采取 pragmatic 路线:不改 chunk
 kernel,把 flush 调度从"chunk 末端恰对齐边界"(`seq % w == 0`,M1 语义,peterDengcx 在 #21120
 指出的缺口)升级为**跨界判定**:
@@ -95,9 +95,12 @@ kernel,把 flush 调度从"chunk 末端恰对齐边界"(`seq % w == 0`,M1 语义
   `runtime.leapquant_flush_state_rows(query_lens=None)` 向后兼容(decode-only 调用方/UT)。
 
 测试门:CPU UT 全绿(state 8 / runtime 9 / config 6,含跨界 mask 全案例 + runtime 穿越 flush +
-步进覆盖每个边界恰一次);NPU UT(payload 逐行 hcnt + 校验)与 0.8B payload e2e 腿(M3.3 语义,
-`f_08b_lq_triton_payload_m33.json`,对 `f_08b_lq_triton_payload.json` 的 diff 应落在噪声底)
-经 `e2e/wait_and_run_m33.sh` 排队等卡。
+步进覆盖每个边界恰一次);NPU UT 全绿(flush 5/5、payload 17/17 含逐行 hcnt、gdn_integration
+1/1 带 query_lens 站点)。**e2e 收口 ✅(2026-11-10,`f_08b_lq_triton_payload_m33.json`,卡 4 一次
+过)**:gsm8k 89/200(历史 5 腿带 81–90,带内且高于 M3.2 payload 腿的 83 — 跨界 flush 落点提前的
+预期效应);**mcq 73/200 且与全部历史腿 200/200 逐题全同**(硬门);sample_preds 一致 9–10/15、
+drift 2/8(噪声底带内;vs M3.2 的差异属语义变更预期,非回归);真实分配器 + strided 池 + 逐行
+hcnt 写全路径无崩溃。
 
 **残余(降级为顺手项)**:真正的 chunk 循环内逐窗口编码 `chunk_boundary_quantize.py` 不再是
 M3.3 必需(现语义已无漏 flush),列为 PR2 polish / M3.4 顺手项——收益仅是把 flush 落点从
