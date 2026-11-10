@@ -135,6 +135,7 @@ M3.3 必需(现语义已无漏 flush),列为 PR2 polish / M3.4 顺手项——�
 - 文件:`workspace.py`(新,`leapquant_workspace_for` 惰性分配 + 进程级注册表;条目强引用 state 张量钉住 data_ptr 防分配器地址复用伪造命中——workspace UT 抓到的真 bug,修复=强引用 + 命中时校验底层 storage 一致,per-forward 视图对象照样命中;teardown 常驻是已知代价,M3.5 换弱引用+设备侧表)、`__init__.py` 导出、`ops/gdn.py` 六处(§2.0 取池、§2.2/§2.4'/纯 decode 站点、§2.3 镜像、§2.4 flush);dev + playground 双树同步。
 - 不变量与验证:decode 核与 flush 均逐行无跨行交互 → **W 轨迹与池上轨迹逐位相等**(决定性论证)。`test_leapquant_workspace.py` 5/5:分配/缓存、校验、镜像治 NaN 旧行、位等轨迹(输出+状态 torch.equal,未触及槽精确为零)、带 mid-flight prefill 的位等轨迹(mid-prefill 写 fresh 行——chunked prefill 不与 decode 交错,两种模式装同一 fresh 值;触发点避开 flush 边界)。回归:flush 5 + payload 17 + recurrent 6 + gdn_integration 3 全绿。e2e 腿 `run_m34a1_leg.sh`(卡序 4-7 优先)运行中,预期 ≈ M3.4 腿(gsm8k ~49% 带,mcq 73/200 零翻转)。
 - M3.4a-2(丢 fp32 ssm 页分量 → ~3.2× 容量)退化为页尺寸改动; notebooks 五本小白教程系列 + `TORCH_NPU_WALKTHROUGH.md` 同期入库(LeapQuant-NPU 仓)。
+- **e2e 双腿判定(2026-11-10 深夜)**:① 默认预算腿(0.85)OOM 于 `workspace.py:82` 首次 W 分配——W=整池尺寸 fp32 副本 5.38GiB/层(池 ≈11k 槽),页内 fp32 池+**W 双份 fp32 是过渡态结构性超卖**(55.58G 已占/5.02G 空闲),非竞争非 bug;② **小预算腿(`--gpu-mem-util 0.48`,池+W 各 ~26G,卡 4,一次过)**:gsm8k **99/200 与 M3.4 腿同分且 15 条抽样 0 差异**、mcq **0/200 翻转**、drift **8/8 逐字节相同**、墙钟 188.2s vs 188.6s(−0.2%)——**跨卡(0→4)跨容量计划(0.85→0.48)的生产轨迹逐位复现**,位等论证(UT torch.equal)在 e2e 侧完全兑现;镜像站点(chunked prefill/槽位复用/批组成)经真实调度验证。run_eval.py 新增 `--gpu-mem-util`(默认 0.85 保持历史腿可复现)。**M3.4a-2(丢 fp32 页分量)落地后显存回基线,OOM 自消**——它才是容量收益所在,M3.4a-1 的双份过渡态只在验证期存在。
 
 ### M3.5 集成硬化 + PR2 组装(~3-4 天)
 - 图捕获兼容:HF "pool 先建 + warmup 再捕获"语义 → NPU 侧 graph 模式验证(hcnt/payload 指针静态化);enforce_eager 路径保持默认

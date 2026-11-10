@@ -102,6 +102,9 @@ def main():
     ap.add_argument("--tp", type=int, default=1)
     ap.add_argument("--backend", default="torch", choices=["torch", "triton"])
     ap.add_argument("--max-num-seqs", type=int, default=16)
+    ap.add_argument("--gpu-mem-util", type=float, default=0.85,
+                    help="0.85 default keeps historical legs reproducible; lower it to "
+                         "shrink the KV/mamba capacity plan (e.g. M3.4a-1 dual-fp32 leg at 0.48)")
     ap.add_argument("--gsm-seed", type=int, default=0,
                     help="shuffle GSM8K question order with this seed (0 = fixed 0..n-1 order)")
     args = ap.parse_args()
@@ -124,7 +127,7 @@ def main():
         model=args.model,
         max_model_len=args.max_model_len,
         max_num_seqs=args.max_num_seqs,
-        gpu_memory_utilization=0.85,
+        gpu_memory_utilization=args.gpu_mem_util,
         enable_prefix_caching=False,
         enforce_eager=True,
         tensor_parallel_size=args.tp,
