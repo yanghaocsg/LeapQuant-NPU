@@ -130,6 +130,12 @@ M3.3 必需(现语义已无漏 flush),列为 PR2 polish / M3.4 顺手项——�
 - ✅ **e2e 腿通过(2026-11-10 晚,卡 0,`f_08b_lq_triton_payload_m34.json`)**:gsm8k **99/200=49.5%**(高于历史带 81-90;+10 题 = 0.8B 刀口效应——核内全 fp32 vs AscendC 内部精度,贪心路径微移;sample 9/15 与 M3.3 相同,恰为跨腿噪声底 9-11/15,同时证明核真实生效:静默回退会是 15/15 全同);**mcq 73/200 与 M3.3 零翻转**(传递性对齐全部历史腿,硬门最严标准通过);墙钟 188.6s vs 185.9s(+1.5%,triton 核替换 AscendC 零代价);drift 2/8 全同(噪声底 2-5/8 内)。
 - 后续:M3.4a W 工作区生命周期(容量收益)→ KDA 侧同款核(逐 K 列衰减)→ M3.4b eq.10 环形读出。
 
+**M3.4a-1 进展(2026-11-10 深夜)— 身份槽位映射影子池 W,落地并全绿**:
+- 设计简化(比上文原方案少一整层复杂度):W 是**恒等槽位映射**的连续 fp32 影子池 `[slots,HV,V,K]`,`W[slot] ≡ ssm_state[slot]`。无宿主侧 slot→row 表、无 `.tolist()` D2H、无 flush_kernel 的 `state_row_ids` 参数、无驱逐逻辑(行数=池槽位数)。decode 内核与边界 flush 全部改在 W 行上跑;§2.3 每个 prefill chunk 的 scatter 链之后追加一次**无条件镜像**(`gather_ssm_states(ssm_state, prefill_state_indices, all-true) → scatter_ssm_states_(W, ...)`),既保持 chunked-prefill 续 chunk 精确(只有 prefill 写引擎行,且每 chunk 后重镜像),又天然治好槽位复用(新请求首次 prefill 直接覆写 W 行)。recompute 抢占 → 全量重 prefill 的 chunk 1 has_initial_state=False(零起步),无需特判。
+- 文件:`workspace.py`(新,`leapquant_workspace_for` 惰性分配 + 进程级注册表;条目强引用 state 张量钉住 data_ptr 防分配器地址复用伪造命中——workspace UT 抓到的真 bug,修复=强引用 + 命中时校验底层 storage 一致,per-forward 视图对象照样命中;teardown 常驻是已知代价,M3.5 换弱引用+设备侧表)、`__init__.py` 导出、`ops/gdn.py` 六处(§2.0 取池、§2.2/§2.4'/纯 decode 站点、§2.3 镜像、§2.4 flush);dev + playground 双树同步。
+- 不变量与验证:decode 核与 flush 均逐行无跨行交互 → **W 轨迹与池上轨迹逐位相等**(决定性论证)。`test_leapquant_workspace.py` 5/5:分配/缓存、校验、镜像治 NaN 旧行、位等轨迹(输出+状态 torch.equal,未触及槽精确为零)、带 mid-flight prefill 的位等轨迹(mid-prefill 写 fresh 行——chunked prefill 不与 decode 交错,两种模式装同一 fresh 值;触发点避开 flush 边界)。回归:flush 5 + payload 17 + recurrent 6 + gdn_integration 3 全绿。e2e 腿 `run_m34a1_leg.sh`(卡序 4-7 优先)运行中,预期 ≈ M3.4 腿(gsm8k ~49% 带,mcq 73/200 零翻转)。
+- M3.4a-2(丢 fp32 ssm 页分量 → ~3.2× 容量)退化为页尺寸改动; notebooks 五本小白教程系列 + `TORCH_NPU_WALKTHROUGH.md` 同期入库(LeapQuant-NPU 仓)。
+
 ### M3.5 集成硬化 + PR2 组装(~3-4 天)
 - 图捕获兼容:HF "pool 先建 + warmup 再捕获"语义 → NPU 侧 graph 模式验证(hcnt/payload 指针静态化);enforce_eager 路径保持默认
 - 回落矩阵测试:A3/A3I/非 A3 × torch/triton × roundtrip/payload × GDN/KDA 全组合,非法组合拒绝或回落并 log 一次
