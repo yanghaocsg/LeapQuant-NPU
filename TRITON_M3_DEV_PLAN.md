@@ -137,6 +137,13 @@ M3.3 必需(现语义已无漏 flush),列为 PR2 polish / M3.4 顺手项——�
 - M3.4a-2(丢 fp32 ssm 页分量 → ~3.2× 容量)退化为页尺寸改动; notebooks 五本小白教程系列 + `TORCH_NPU_WALKTHROUGH.md` 同期入库(LeapQuant-NPU 仓)。
 - **e2e 双腿判定(2026-11-10 深夜)**:① 默认预算腿(0.85)OOM 于 `workspace.py:82` 首次 W 分配——W=整池尺寸 fp32 副本 5.38GiB/层(池 ≈11k 槽),页内 fp32 池+**W 双份 fp32 是过渡态结构性超卖**(55.58G 已占/5.02G 空闲),非竞争非 bug;② **小预算腿(`--gpu-mem-util 0.48`,池+W 各 ~26G,卡 4,一次过)**:gsm8k **99/200 与 M3.4 腿同分且 15 条抽样 0 差异**、mcq **0/200 翻转**、drift **8/8 逐字节相同**、墙钟 188.2s vs 188.6s(−0.2%)——**跨卡(0→4)跨容量计划(0.85→0.48)的生产轨迹逐位复现**,位等论证(UT torch.equal)在 e2e 侧完全兑现;镜像站点(chunked prefill/槽位复用/批组成)经真实调度验证。run_eval.py 新增 `--gpu-mem-util`(默认 0.85 保持历史腿可复现)。**M3.4a-2(丢 fp32 页分量)落地后显存回基线,OOM 自消**——它才是容量收益所在,M3.4a-1 的双份过渡态只在验证期存在。
 
+**M3.4a-KDA 收口(2026-11-11)— KDA decode 走 triton 核,全绿并推送**:
+- `kimi_kda._leapquant_kda_recurrent`:host `kda_expand_gate` + fla `l2norm_fwd`(逐位复现 AscendC 核内 gate/l2norm)→ `recurrent_kda_leapquant`(W 影子池,payload 兼容)。KDA 与 GDN 核差异只在衰减粒度(per-K 列 `b_h *= tl.exp(b_gk)[None,:]`),复用全部 M3.4 基建。
+- **fla_npu AscendC `recurrent_kda` 探针矩阵结论**(die 14/15,写入集成测试 docstring):① **decode-only**——`cu_seqlens` 任何跨度 >1 token 即 `aclnnRecurrentKdaGetWorkspaceSize 161002`(多 token 生产路径本就走 `run_chunk_kda`);② **多请求状态写不可靠**——单 call 2 序列时第 2 序列状态行丢失/输出行读 nan-inf 垃圾,且依赖进程 NPU 分配史(数值全交换、输入布局 [1,2,H,D]/[2,1,H,D]/3D、分配顺序/次数 n_warm 0–40、import 顺序、CPU 来源 H2D(直接崩向量核 retCode=0x31)全部排除后仍复现);单序列 `[1,1,H,D]` call 稳健;③ op 跑在旁路 stream——输入需整轨迹持有 + sync。**triton 核替换的正是这个 call,M3.4a 既是替代也是修复**;值得上报 fla_npu 上游。
+- 集成测试规避法:参考轨迹每 call 单请求(同池两个活跃槽 1/3),仍覆盖多槽池/双 gate 变体(softplus=Kimi-Linear 与 lower_bound=-3 safe)/flush/host 复现契约。
+- UT(die 14/15):`test_leapquant_recurrent_kda` 7/7、`test_leapquant_kda_integration` 3/3(AscendC vs triton parity <0.02、flushed envelope <0.05)、回归 sweep 全绿(recurrent 6 + payload 17 + workspace 5 + gdn_integration 3)。已推 yanghaocsg/vllm-ascend `leapquant-triton-m3` @ 4cc2d1f70。
+- 教程:LeapQuant-NPU `notebooks/leapquant_kda_{1..5}` 五本(全部 A3 实跑)+ `leapquant_memory_proof`(状态 3.368× 账本与 4096-slot 池 NPU 实测同倍数;Qwen3.5-0.8B 真实权重 1.627 GiB e2e 账本 56% @ ~362 slots,渐近 70.3%;KV cache 未入账=保守方向),镜像到 awesome_quant_algo/leapquant_notebooks。
+
 ### M3.5 集成硬化 + PR2 组装(~3-4 天)
 - 图捕获兼容:HF "pool 先建 + warmup 再捕获"语义 → NPU 侧 graph 模式验证(hcnt/payload 指针静态化);enforce_eager 路径保持默认
 - 回落矩阵测试:A3/A3I/非 A3 × torch/triton × roundtrip/payload × GDN/KDA 全组合,非法组合拒绝或回落并 log 一次
