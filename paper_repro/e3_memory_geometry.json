@@ -1,0 +1,48 @@
+{
+ "Qwen3.5-0.8B": {
+  "linear_layers": 18,
+  "heads": 16,
+  "weights_gib": 1.627,
+  "per_slot_fp32_mib": 18.0,
+  "per_slot_lq_mib": 5.34,
+  "state_ratio": 3.368,
+  "slots_at_56pct": 362,
+  "asymptote_pct": 70.3
+ },
+ "Qwen3.5-9B": {
+  "linear_layers": 24,
+  "heads": 32,
+  "weights_gib": 17.98,
+  "per_slot_fp32_mib": 48.0,
+  "per_slot_lq_mib": 14.25,
+  "state_ratio": 3.368,
+  "slots_at_56pct": 1501,
+  "asymptote_pct": 70.3
+ },
+ "Qwen3.5-35B-A3B": {
+  "linear_layers": 30,
+  "heads": 32,
+  "weights_gib": 66.966,
+  "per_slot_fp32_mib": 60.0,
+  "per_slot_lq_mib": 17.82,
+  "state_ratio": 3.368,
+  "slots_at_56pct": 4474,
+  "asymptote_pct": 70.3
+ },
+ "Kimi-Linear-48B-A3B": {
+  "linear_layers": 20,
+  "heads": 32,
+  "weights_gib": 91.501,
+  "per_slot_fp32_mib": 40.0,
+  "per_slot_lq_mib": 11.88,
+  "state_ratio": 3.368,
+  "slots_at_56pct": 9169,
+  "asymptote_pct": 70.3
+ },
+ "fixed_budget_64g_slots": {
+  "model": "Qwen3.5-9B",
+  "slots_fp32": 981,
+  "slots_leapquant": 3306,
+  "prefix_capacity_ratio": 3.37
+ }
+}

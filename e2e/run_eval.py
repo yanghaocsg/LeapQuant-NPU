@@ -17,6 +17,7 @@ GSM_TEST = f"{DATA}/gsm8k/main/test-00000-of-00001.parquet"
 GSM_TRAIN = f"{DATA}/gsm8k/main/train-00000-of-00001.parquet"
 CMMLU_TEST = f"{DATA}/cmmlu/test"
 CMMLU_DEV = f"{DATA}/cmmlu/dev"
+AIME_TEST = f"{DATA}/aime_2026/data/train-00000-of-00001.parquet"
 
 LETTERS = ["A", "B", "C", "D"]
 
@@ -82,6 +83,38 @@ def load_cmmlu(n, seed=0):
     return rows[:n]
 
 
+AIME_TMPL = (
+    "{problem}\n\nReason step by step, then give your final answer as a single "
+    "integer between 0 and 999 on the last line, formatted exactly as "
+    "'Final Answer: <integer>'."
+)
+
+
+def extract_aime(text):
+    """AIME answers are integers in 0..999. Prefer the text after the last
+    </think> (thinking mode), then 'Final Answer:', then \\boxed{}, then the
+    last integer in the tail."""
+    tail = text.rsplit("</think>", 1)[-1]
+    for seg in (tail, text):
+        if "Final Answer:" in seg:
+            m = re.search(r"Final Answer:?\s*\$?(-?\d+)", seg)
+            if m:
+                a = int(m.group(1))
+                if 0 <= a <= 999:
+                    return a
+    m = re.findall(r"\\boxed\{(-?\d+)\}", text)
+    if m:
+        a = int(m[-1])
+        if 0 <= a <= 999:
+            return a
+    m = re.findall(r"-?\d+", tail[-400:])
+    if m:
+        a = int(m[-1])
+        if 0 <= a <= 999:
+            return a
+    return None
+
+
 MCQ_TMPL = (
     "以下是一道关于{subject}的单项选择题，请直接给出正确答案的选项字母。\n\n"
     "{question}\nA. {a}\nB. {b}\nC. {c}\nD. {d}\n\n答案是："
@@ -107,6 +140,13 @@ def main():
                          "shrink the KV/mamba capacity plan (e.g. M3.4a-1 dual-fp32 leg at 0.48)")
     ap.add_argument("--gsm-seed", type=int, default=0,
                     help="shuffle GSM8K question order with this seed (0 = fixed 0..n-1 order)")
+    ap.add_argument("--n-aime", type=int, default=0,
+                    help="AIME 2026 problems to run (paper flagship long-CoT task; 0 = skip)")
+    ap.add_argument("--aime-max-tokens", type=int, default=8192,
+                    help="max generated tokens per AIME problem (paper allows ~80K; "
+                         "truncation hits all legs equally)")
+    ap.add_argument("--aime-no-think", action="store_true",
+                    help="disable thinking mode for AIME (default: thinking ON per paper table 6)")
     args = ap.parse_args()
 
     from vllm import LLM, SamplingParams
@@ -145,6 +185,11 @@ def main():
         "rank": args.rank,
     }
 
+    def checkpoint(tag):
+        result["last_task"] = tag
+        with open(args.out, "w") as f:
+            json.dump(result, f, ensure_ascii=False, indent=1)
+
     # ---- GSM8K 5-shot ----
     shots = gsm_shots(5)
     gsm = pl.read_parquet(GSM_TEST)
@@ -178,6 +223,7 @@ def main():
         "sample_golds": golds[:15],
     }
     print(f"[GSM8K] {correct}/{len(idx)} = {correct/len(idx):.3f} in {gsm_time:.0f}s", flush=True)
+    checkpoint("gsm8k")
 
     # ---- cmmlu letter-argmax ----
     rows = load_cmmlu(args.n_mcq)
@@ -222,6 +268,49 @@ def main():
         "detail": detail,
     }
     print(f"[MCQ ] {correct}/{len(rows)} = {correct/len(rows):.3f}", flush=True)
+    checkpoint("mcq")
+
+    # ---- AIME 2026 (paper flagship long-CoT; thinking mode per table 6) --
+    if args.n_aime:
+        aime = pl.read_parquet(AIME_TEST)
+        idx = list(range(min(args.n_aime, aime.height)))
+        aime_prompts = [
+            [{"role": "user", "content": AIME_TMPL.format(problem=aime[i, "problem"])}]
+            for i in idx
+        ]
+        aime_golds = [int(aime[i, "answer"]) for i in idx]
+        ctk_aime = dict(ctk)
+        if not args.aime_no_think and "enable_thinking" in (getattr(tok, "chat_template", "") or ""):
+            ctk_aime["enable_thinking"] = True
+        t0 = time.time()
+        outs = llm.chat(
+            aime_prompts,
+            SamplingParams(temperature=0.0, max_tokens=args.aime_max_tokens),
+            chat_template_kwargs=ctk_aime,
+        )
+        aime_time = time.time() - t0
+        correct, preds, finishes = 0, [], []
+        for o, g in zip(outs, aime_golds):
+            p = extract_aime(o.outputs[0].text)
+            preds.append(p)
+            finishes.append(o.outputs[0].finish_reason)
+            if p == g:
+                correct += 1
+        result["aime"] = {
+            "n": len(idx),
+            "correct": correct,
+            "acc": correct / len(idx),
+            "seconds": round(aime_time, 1),
+            "max_tokens": args.aime_max_tokens,
+            "thinking": bool(ctk_aime.get("enable_thinking")),
+            "preds": preds,
+            "golds": aime_golds,
+            "finish_reasons": finishes,
+        }
+        print(f"[AIME] {correct}/{len(idx)} = {correct/len(idx):.3f} in {aime_time:.0f}s "
+              f"(thinking={result['aime']['thinking']}, max_tokens={args.aime_max_tokens})",
+              flush=True)
+        checkpoint("aime")
 
     # ---- drift probes ----
     outs = llm.chat(
