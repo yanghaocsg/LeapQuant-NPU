@@ -1,0 +1,73 @@
+{
+ "flush": {
+  "0.8B H16 b16": {
+   "torch_ms": 6.019,
+   "triton_ms": 1.116,
+   "payload_ms": 1.15,
+   "speedup_roundtrip": 5.39,
+   "speedup_payload_vs_torch": 5.23
+  },
+  "9B   H32 b16": {
+   "torch_ms": 6.069,
+   "triton_ms": 2.227,
+   "payload_ms": 2.258,
+   "speedup_roundtrip": 2.72,
+   "speedup_payload_vs_torch": 2.69
+  },
+  "9B   H32 b64": {
+   "torch_ms": 7.891,
+   "triton_ms": 8.889,
+   "payload_ms": 9.001,
+   "speedup_roundtrip": 0.89,
+   "speedup_payload_vs_torch": 0.88
+  },
+  "9B   H32 b256": {
+   "torch_ms": 23.557,
+   "triton_ms": 35.653,
+   "payload_ms": 36.115,
+   "speedup_roundtrip": 0.66,
+   "speedup_payload_vs_torch": 0.65
+  },
+  "9B   H32 b512": {
+   "torch_ms": 44.871,
+   "triton_ms": 70.961,
+   "payload_ms": 71.702,
+   "speedup_roundtrip": 0.63,
+   "speedup_payload_vs_torch": 0.63
+  },
+  "kimi H32 b64": {
+   "torch_ms": 7.83,
+   "triton_ms": 8.847,
+   "payload_ms": 8.994,
+   "speedup_roundtrip": 0.88,
+   "speedup_payload_vs_torch": 0.87
+  }
+ },
+ "decode": {
+  "B64": {
+   "ascendc_ms": 0.288,
+   "triton_gdn_ms": 0.294,
+   "triton_kda_ms": 0.367,
+   "ascendc_toks": 222356,
+   "triton_gdn_toks": 217350,
+   "parity_ratio": 0.977
+  },
+  "B256": {
+   "ascendc_ms": 1.018,
+   "triton_gdn_ms": 1.535,
+   "triton_kda_ms": 1.792,
+   "ascendc_toks": 251396,
+   "triton_gdn_toks": 166747,
+   "parity_ratio": 0.663
+  },
+  "B512": {
+   "ascendc_ms": 2.01,
+   "triton_gdn_ms": 3.048,
+   "triton_kda_ms": 3.565,
+   "ascendc_toks": 254786,
+   "triton_gdn_toks": 167974,
+   "parity_ratio": 0.659
+  }
+ },
+ "note": "fig7-style int8-payload decode readout = M3.4b (pending); decode numbers above are the fp32-state parity replacement. flush payload mode is the shipped bandwidth win (int8 write, no fp32 rewrite)."
+}

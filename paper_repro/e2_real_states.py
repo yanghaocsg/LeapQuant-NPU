@@ -59,6 +59,14 @@ def sv_energy(state_vk, ks):
 
 
 def main():
+    import os
+
+    if os.path.exists("e2_real_states_cache.pt"):
+        states = torch.load("e2_real_states_cache.pt", map_location="cpu")
+        print(f"[cache] {len(states)} layers from e2_real_states_cache.pt", flush=True)
+        run_analysis(states, ctx=CTX)
+        return
+
     torch.npu.set_device(0)
     dev = torch.device("npu:0")
 
@@ -87,9 +95,13 @@ def main():
             states[li] = rs[0][0].float().cpu()  # [H, K, V]
     print(f"[grab] linear layers with recurrent state: {sorted(states)}", flush=True)
     torch.npu.empty_cache()
+    torch.save(states, "e2_real_states_cache.pt")
+    run_analysis(states, ctx=ids.shape[1])
 
+
+def run_analysis(states, ctx):
     ks = [1, 2, 4, 8, 12, 16]
-    res = {"ctx": ids.shape[1], "layers": sorted(states), "k_list": ks}
+    res = {"ctx": ctx, "layers": sorted(states), "k_list": ks}
 
     # ---- E2b': fig5 on real states ---------------------------------------
     fracs = {k: [] for k in ks}
@@ -109,16 +121,11 @@ def main():
     from vllm_ascend.quantization.methods.mamba_state.leapquant.state import (
         fit_compensators, quantize_residual, start_basis)
 
-    def outlier_ratio(T):
-        return (T.abs().amax(dim=(-2, -1)) /
-                T.abs().median(dim=-2).values.median(dim=-1).values).item()
-
-    q0 = start_basis(V, 4)
+    q0 = start_basis(V, 4, device=torch.device("cpu"))
     probe = {"layer": 13, "head": 16}
     rows_ratios = {"raw": [], "after_comp": [], "after_smooth": []}
     probe_ratios = {}
     for li, S in states.items():
-        blocks = S.transpose(0, 1).contiguous()  # [H, K, V] -> per-head [K,V]
         blocks = torch.stack([S[h].t() for h in range(S.shape[0])])  # [H, V, K]
         u, q = fit_compensators(blocks, q0, 4)
         E = blocks - torch.einsum("nrv,nrk->nvk", q.float(), u.float())
